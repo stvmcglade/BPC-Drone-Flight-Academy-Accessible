@@ -126,13 +126,46 @@ select {
   margin: 0 auto;
   padding: 24px;
   display: grid;
+  grid-template-areas:
+    "header header"
+    "sidebar main";
   grid-template-columns: 360px minmax(0, 1fr);
   gap: 24px;
 }
 
 .app-shell.teacher-mode {
+  grid-template-areas:
+    "header"
+    "sidebar";
   grid-template-columns: 1fr;
   max-width: 980px;
+}
+
+.site-header {
+  grid-area: header;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 24px;
+  align-items: center;
+  padding: 24px;
+  border: 1px solid var(--panel-border);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at top right, var(--theme-glow), transparent 32%),
+    linear-gradient(135deg, rgba(8, 28, 43, 0.98), rgba(12, 37, 58, 0.94));
+  box-shadow: var(--shadow);
+}
+
+.site-header .school-brand {
+  margin-bottom: 0;
+}
+
+.site-header-copy {
+  min-width: 0;
+}
+
+.site-header h1 {
+  margin-bottom: 8px;
 }
 
 .app-shell.teacher-mode .sidebar {
@@ -152,6 +185,14 @@ select {
   gap: 20px;
 }
 
+.sidebar {
+  grid-area: sidebar;
+}
+
+.main-column {
+  grid-area: main;
+}
+
 .panel {
   border: 1px solid var(--panel-border);
   background: var(--panel);
@@ -167,6 +208,8 @@ select {
 .tips-panel,
 .teacher-panel,
 .simulator-panel,
+.feedback-panel,
+.audio-controls-panel,
 .accessible-panel,
 .editor-panel {
   padding: 24px;
@@ -350,6 +393,39 @@ code {
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+.simulator-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(190px, 240px);
+  gap: 18px;
+  align-items: stretch;
+}
+
+.simulator-panel > .panel-heading,
+.simulator-panel > .simulator-stage {
+  min-width: 0;
+}
+
+.simulator-panel > .panel-heading {
+  grid-column: 1;
+}
+
+.simulator-panel > .simulator-stage {
+  grid-column: 1;
+}
+
+.feedback-panel {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  background:
+    radial-gradient(circle at top right, rgba(255, 200, 108, 0.14), transparent 36%),
+    rgba(255, 255, 255, 0.05);
+}
+
+.feedback-panel .feedback-text {
+  margin-bottom: 0;
+  font-size: 1.02rem;
+}
+
 body[data-theme="second_officer"] .simulator-stage {
   background:
     radial-gradient(circle at top left, rgba(224, 255, 125, 0.08), transparent 28%),
@@ -375,14 +451,14 @@ body[data-theme="captain"] .simulator-stage {
 }
 
 .hud-card {
-  position: absolute;
-  right: 18px;
-  top: 18px;
+  position: static;
   display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
-  min-width: 170px;
+  width: auto;
   padding: 14px;
-  border-radius: 20px;
+  margin: 12px;
+  border-radius: 18px;
   background: rgba(5, 16, 27, 0.78);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -668,6 +744,13 @@ textarea {
   margin-top: 18px;
 }
 
+.workspace-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
+  gap: 20px;
+  align-items: start;
+}
+
 .feedback-card {
   padding: 18px;
   border-radius: 22px;
@@ -722,7 +805,25 @@ textarea {
 
 @media (max-width: 1120px) {
   .app-shell {
+    grid-template-areas:
+      "header"
+      "sidebar"
+      "main";
     grid-template-columns: 1fr;
+  }
+
+  .simulator-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .simulator-panel > .panel-heading,
+  .simulator-panel > .simulator-stage,
+  .feedback-panel {
+    grid-column: 1;
+  }
+
+  .feedback-panel {
+    grid-row: auto;
   }
 }
 
@@ -730,6 +831,12 @@ textarea {
   .app-shell {
     padding: 14px;
     gap: 14px;
+  }
+
+  .site-header {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    border-radius: 22px;
   }
 
   .school-brand {
@@ -754,8 +861,12 @@ textarea {
     grid-template-columns: 1fr;
   }
 
+  .workspace-grid {
+    grid-template-columns: 1fr;
+  }
+
   .hud-card {
-    position: static;
-    margin: 16px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 12px;
   }
 }

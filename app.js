@@ -83,7 +83,7 @@ const DEFAULT_TEACHER_EMAIL = "mg@buckleyparkco.vic.edu.au";
 const DEFAULT_TEACHER_PASSWORD = "password123";
 
 const COMMANDS = new Set([
-  "takeOff", "land", "moveUp", "moveDown", "moveLeft", "moveRight", "rotateLeft", "rotateRight", "wait", "takeSample",
+  "takeOff", "land", "moveUp", "moveDown", "moveLeft", "moveRight", "rotateLeft", "rotateRight", "wait", "takeSample", "takeLandSample", "takePhoto",
 ]);
 
 const CAMPAIGNS = {
@@ -113,11 +113,14 @@ const CAMPAIGNS = {
         example: `takeOff();
 moveRight(140);
 moveUp(110);
+takePhoto();
 moveRight(180);
 moveUp(90);
+takePhoto();
 moveDown(180);
 moveLeft(320);
-land();`,
+land();
+takeLandSample();`,
       },
       {
         title: "Mission 2: Dock Sweep",
@@ -245,19 +248,31 @@ land();`,
           { type: "mountain", x: 625, y: 495, width: 250, height: 145 },
         ],
         example: `takeOff();
-moveRight(90);
-moveUp(95);
+moveRight(145);
+moveUp(75);
 if (sensingColor("grey")) {
 land();
 takeSample();
 takeOff();
-moveRight(170);
-moveUp(120);
-moveRight(200);
-moveDown(145);
-moveLeft(460);
 }
-land();`,
+moveLeft(55);
+moveUp(67);
+takePhoto();
+moveUp(255);
+moveRight(390);
+moveDown(135);
+takePhoto();
+moveUp(135);
+moveRight(240);
+moveDown(280);
+moveLeft(40);
+takePhoto();
+moveRight(50);
+moveDown(170);
+moveLeft(730);
+moveUp(53);
+land();
+takeLandSample();`,
       },
       {
         title: "Mission 2: Flood Survey",
@@ -398,19 +413,29 @@ land();`,
           { type: "platform", x: 760, y: 468, width: 130, height: 26 },
         ],
         example: `takeOff();
-moveRight(395);
-moveUp(206);
+moveRight(83);
+moveUp(143);
+takePhoto();
+moveUp(133);
+moveRight(310);
 land();
 takeSample();
 takeOff();
 for (let i = 0; i < 1; i++) {
 wait(1);
 }
-moveRight(275);
-moveDown(155);
-moveLeft(670);
-moveDown(51);
-land();`,
+moveLeft(75);
+moveUp(37);
+takePhoto();
+moveUp(80);
+moveRight(290);
+moveDown(235);
+takePhoto();
+moveRight(80);
+moveDown(158);
+moveLeft(688);
+land();
+takeLandSample();`,
       },
       {
         title: "Mission 2: Runway Window",
@@ -555,27 +580,44 @@ land();`,
           { x: 470, y: 255, width: 135, height: 220, label: "Tower Field" },
           { x: 700, y: 95, width: 95, height: 150, label: "Lightning Mast" },
         ],
+        colorZones: [
+          { color: "grey", label: "Grey Storm Patch", x: 130, y: 335, width: 120, height: 85, fill: "rgba(170, 180, 191, 0.32)", stroke: "#b8c1ca" },
+          { color: "blue", label: "Blue Tile", x: 485, y: 155, width: 120, height: 85, fill: "rgba(89, 215, 255, 0.24)", stroke: "#72dfff" },
+          { color: "gold", label: "Gold Tile", x: 735, y: 345, width: 120, height: 85, fill: "rgba(255, 215, 140, 0.24)", stroke: "#ffd78c" },
+        ],
         decorations: [
           { type: "lightning", x: 180, y: 120 },
           { type: "lightning", x: 760, y: 100 },
           { type: "platform", x: 760, y: 455, width: 120, height: 28 },
         ],
         example: `takeOff();
-moveRight(135);
+moveRight(50);
 moveUp(90);
 if (sensingColor("grey")) {
+land();
+takeSample();
+takeOff();
 for (let i = 0; i < 1; i++) {
 wait(1);
 }
-moveUp(125);
-moveRight(315);
-moveUp(50);
-moveRight(260);
-moveDown(140);
-moveLeft(710);
-moveDown(125);
 }
-land();`,
+moveUp(153);
+moveRight(54);
+takePhoto();
+moveUp(50);
+moveRight(275);
+takePhoto();
+moveUp(100);
+moveRight(310);
+moveDown(240);
+moveLeft(50);
+takePhoto();
+moveRight(80);
+moveDown(190);
+moveLeft(719);
+moveUp(37);
+land();
+takeLandSample();`,
       },
       {
         title: "Mission 2: Radio Maze",
@@ -721,6 +763,8 @@ const state = {
   playing: false,
   visitedCheckpoints: new Set(),
   collectedSamples: new Set(),
+  collectedLandSamples: new Set(),
+  capturedPhotos: new Set(),
   trail: [],
   currentMissionSuccess: false,
   accounts: {},
@@ -836,7 +880,7 @@ function getMission() {
 
 function getInitialDrone() {
   const pad = getMission().launchPad;
-  return { x: pad.x + pad.width / 2, y: pad.y + pad.height / 2, altitude: 0, heading: 0, airborne: false, sampleFlashMs: 0, sampledTargets: new Set() };
+  return { x: pad.x + pad.width / 2, y: pad.y + pad.height / 2, altitude: 0, heading: 0, airborne: false, sampleFlashMs: 0, photoFlashMs: 0, sampledTargets: new Set(), landSamples: new Set(), photos: new Set() };
 }
 
 function escapeHtml(value) {
@@ -861,6 +905,20 @@ function formatDistance(value) {
 
 function formatCoordinates(x, y) {
   return `x ${Math.round(x)}, y ${Math.round(y)}`;
+}
+
+function getMissionPhotoRequirements() {
+  return getMission().photoRequirements ?? getMission().checkpoints.map((checkpoint) => ({
+    checkpointId: checkpoint.id,
+    label: `${checkpoint.name} Photo`,
+  }));
+}
+
+function getMissionLandSampleRequirements() {
+  return getMission().landSampleRequirements ?? [{
+    id: "launch-pad-ground-sample",
+    label: "Launch Pad Ground Sample",
+  }];
 }
 
 function getRelativeDescriptionFromPoint(originX, originY, targetX, targetY) {
@@ -928,15 +986,23 @@ function updateAccessibleStatus() {
 function renderAccessibleMissionSummary() {
   const mission = getMission();
   const checkpointsHtml = mission.checkpoints
-    .map((checkpoint, index) => `<li>Checkpoint ${index + 1}: ${escapeHtml(checkpoint.name)}.</li>`)
+    .map((checkpoint, index) => `<li>Checkpoint ${index + 1}: ${escapeHtml(checkpoint.name)} at ${formatCoordinates(checkpoint.x, checkpoint.y)}.</li>`)
     .join("");
   const noFlyHtml = mission.noFlyZones.length
     ? mission.noFlyZones.map((zone) => `<li>${escapeHtml(zone.label)} no-fly zone.</li>`).join("")
     : "<li>No no-fly zones in this mission.</li>";
   const sampleRequirements = mission.sampleRequirements ?? [];
+  const photoRequirements = getMissionPhotoRequirements();
+  const landSampleRequirements = getMissionLandSampleRequirements();
   const sampleHtml = sampleRequirements.length
     ? sampleRequirements.map((sample) => `<li>Collect ${escapeHtml(sample.label)} by landing on the ${escapeHtml(sample.color)} patch and using takeSample().</li>`).join("")
     : "<li>No sample collection is required.</li>";
+  const photoHtml = photoRequirements.length
+    ? photoRequirements.map((photo) => `<li>Take ${escapeHtml(photo.label)} with takePhoto() while airborne at that checkpoint.</li>`).join("")
+    : "";
+  const landSampleHtml = landSampleRequirements.length
+    ? landSampleRequirements.map((sample) => `<li>After landing back on the launch pad, collect ${escapeHtml(sample.label)} with takeLandSample().</li>`).join("")
+    : "";
   accessibleMissionBadge.textContent = `Mission ${state.missionIndex + 1}`;
   accessibleMissionBadge.className = "chip chip-calm";
   accessibleMissionSummary.innerHTML = `
@@ -946,6 +1012,8 @@ function renderAccessibleMissionSummary() {
       <li>Launch from the pad, complete all listed objectives, and finish with a safe landing back on the pad.</li>
       ${checkpointsHtml}
       ${sampleHtml}
+      ${photoHtml}
+      ${landSampleHtml}
       ${noFlyHtml}
     </ul>
   `;
@@ -1120,6 +1188,8 @@ function speakCommandGuide() {
     "rotateRight 90. Turn clockwise.",
     "wait 1. Hover for seconds.",
     "takeSample. Land on a coloured sensor patch and collect a sample.",
+    "takeLandSample. Land back on the launch pad and collect a ground sample before the mission can finish.",
+    "takePhoto. Take an aerial photo while the drone is airborne at a checkpoint.",
     "if droneIsAirborne. Run commands only when the condition is true.",
     "if sensingColor grey. Run commands when the drone is above a coloured patch.",
     "for let i equals 0; i less than 3; i plus plus. Repeat a block of commands.",
@@ -1149,6 +1219,17 @@ function speakMissionAudioMap() {
     return `${sample.label} is on the ${sample.color} patch, ${getRelativeDescriptionFromPoint(startX, startY, zoneCenterX, zoneCenterY)}.`;
   }).join(" ");
 
+  const photoSummary = getMissionPhotoRequirements().map((photo) => {
+    const checkpoint = mission.checkpoints.find((entry) => entry.id === photo.checkpointId);
+    return checkpoint
+      ? `${photo.label} requires takePhoto at ${getRelativeDescriptionFromPoint(startX, startY, checkpoint.x, checkpoint.y)}.`
+      : `${photo.label} requires takePhoto.`;
+  }).join(" ");
+
+  const landSampleSummary = getMissionLandSampleRequirements()
+    .map((sample) => `${sample.label} requires takeLandSample after landing back on the launch pad.`)
+    .join(" ");
+
   const noFlySummary = mission.noFlyZones.length
     ? mission.noFlyZones.map((zone) => {
       const zoneCenterX = zone.x + zone.width / 2;
@@ -1157,7 +1238,7 @@ function speakMissionAudioMap() {
     }).join(" ")
     : "There are no no-fly zones in this mission.";
 
-  const summary = `Mission audio map. You are starting on the launch pad at ${formatCoordinates(startX, startY)}. ${mission.objective} ${checkpointSummary} ${sampleZones} ${noFlySummary}`;
+  const summary = `Mission audio map. You are starting on the launch pad at ${formatCoordinates(startX, startY)}. ${mission.objective} ${checkpointSummary} ${sampleZones} ${photoSummary} ${landSampleSummary} ${noFlySummary}`;
   addFlightLog("Mission audio map played from the launch pad starting position.", true, false);
   speakMessage(summary, true);
 }
@@ -1299,6 +1380,8 @@ function resetSimulatorForAuthSwitch() {
   state.lastTime = 0;
   state.visitedCheckpoints = new Set();
   state.collectedSamples = new Set();
+  state.collectedLandSamples = new Set();
+  state.capturedPhotos = new Set();
   state.currentMissionSuccess = false;
   if (state.drone) {
     state.drone.sampleFlashMs = 0;
@@ -1655,7 +1738,22 @@ function getMissionColorZones() {
 }
 
 function loadMissionEditor(exampleOverride) {
-  codeEditor.value = exampleOverride ?? getMission().example;
+  if (exampleOverride) {
+    codeEditor.value = exampleOverride;
+    return;
+  }
+  if (state.missionIndex === 0) {
+    codeEditor.value = getMission().example;
+    exampleButton.disabled = false;
+    exampleButton.textContent = "Load Example";
+    return;
+  }
+  codeEditor.value = `// Plan your own solution for this mission.
+// Use takePhoto() at checkpoints.
+// Use takeSample() on required colour patches.
+// Finish by landing on the launch pad and using takeLandSample().`;
+  exampleButton.disabled = true;
+  exampleButton.textContent = "Example Available On Mission 1";
 }
 
 function updateFeedback(message, badgeText, badgeClass) {
@@ -1677,6 +1775,8 @@ function renderMissionPanel() {
   const mission = getMission();
   const allVisited = mission.checkpoints.every((checkpoint) => state.visitedCheckpoints.has(checkpoint.id));
   const sampleRequirements = mission.sampleRequirements ?? [];
+  const photoRequirements = getMissionPhotoRequirements();
+  const landSampleRequirements = getMissionLandSampleRequirements();
   storyText.textContent = `${campaign.title}: ${mission.story}`;
   missionText.textContent = mission.objective;
   missionIndexBadge.textContent = `Mission ${state.missionIndex + 1} of ${campaign.missions.length}`;
@@ -1685,13 +1785,21 @@ function renderMissionPanel() {
   nextMissionButton.disabled = state.missionIndex === campaign.missions.length - 1;
   const checkpointHtml = mission.checkpoints.map((checkpoint) => {
     const complete = state.visitedCheckpoints.has(checkpoint.id);
-    return `<div class="checkpoint-item ${complete ? "complete" : ""}"><div><strong>${checkpoint.name}</strong><div>${complete ? "Reached by drone" : "Pending objective"}</div></div><span class="chip ${complete ? "chip-good" : "chip-calm"}">${complete ? "Done" : "Pending"}</span></div>`;
+    return `<div class="checkpoint-item ${complete ? "complete" : ""}"><div><strong>${checkpoint.name}</strong><div>${formatCoordinates(checkpoint.x, checkpoint.y)} - ${complete ? "Reached by drone" : "Pending objective"}</div></div><span class="chip ${complete ? "chip-good" : "chip-calm"}">${complete ? "Done" : "Pending"}</span></div>`;
   }).join("");
   const sampleHtml = sampleRequirements.map((sample) => {
     const complete = state.collectedSamples.has(sample.label);
     return `<div class="checkpoint-item ${complete ? "complete" : ""}"><div><strong>${sample.label}</strong><div>${complete ? `Collected from ${sample.color} patch` : `Land on the ${sample.color} patch and use takeSample();`}</div></div><span class="chip ${complete ? "chip-good" : "chip-calm"}">${complete ? "Sampled" : "Pending"}</span></div>`;
   }).join("");
-  checkpointList.innerHTML = checkpointHtml + sampleHtml;
+  const photoHtml = photoRequirements.map((photo) => {
+    const complete = state.capturedPhotos.has(photo.label);
+    return `<div class="checkpoint-item ${complete ? "complete" : ""}"><div><strong>${photo.label}</strong><div>${complete ? "Photo captured" : "Fly to this checkpoint and use takePhoto();"}</div></div><span class="chip ${complete ? "chip-good" : "chip-calm"}">${complete ? "Photo" : "Pending"}</span></div>`;
+  }).join("");
+  const landSampleHtml = landSampleRequirements.map((sample) => {
+    const complete = state.collectedLandSamples.has(sample.label);
+    return `<div class="checkpoint-item ${complete ? "complete" : ""}"><div><strong>${sample.label}</strong><div>${complete ? "Ground sample collected" : "Land back on the launch pad and use takeLandSample();"}</div></div><span class="chip ${complete ? "chip-good" : "chip-calm"}">${complete ? "Sampled" : "Pending"}</span></div>`;
+  }).join("");
+  checkpointList.innerHTML = checkpointHtml + sampleHtml + photoHtml + landSampleHtml;
 
   if (state.playing) {
     missionState.textContent = "Flying";
@@ -1723,6 +1831,8 @@ function resetDrone() {
   state.playing = false;
   state.visitedCheckpoints = new Set();
   state.collectedSamples = new Set();
+  state.collectedLandSamples = new Set();
+  state.capturedPhotos = new Set();
   state.trail = [{ x: state.drone.x, y: state.drone.y }];
   state.currentMissionSuccess = false;
   state.lastSpokenProgressAt = 0;
@@ -1837,7 +1947,7 @@ function parseCommandLine(rawLine, lineNumber) {
   const [, name, rawArg] = match;
   if (!COMMANDS.has(name)) throw new Error(`Line ${lineNumber}: "${name}" is not a supported command.`);
   const trimmedArg = rawArg.trim();
-  const needsValue = !["takeOff", "land", "takeSample"].includes(name);
+  const needsValue = !["takeOff", "land", "takeSample", "takeLandSample", "takePhoto"].includes(name);
   if (!needsValue && trimmedArg) throw new Error(`Line ${lineNumber}: ${name}() does not take a value.`);
   if (needsValue && !trimmedArg) throw new Error(`Line ${lineNumber}: ${name} needs a positive number.`);
   let value = null;
@@ -1903,6 +2013,18 @@ function getSampleTargetAtPosition(x, y) {
   return (getMission().sampleRequirements ?? []).find((sample) => sample.color.toLowerCase() === sensedColor) ?? null;
 }
 
+function getPhotoTargetAtPosition(x, y) {
+  const mission = getMission();
+  const checkpoint = mission.checkpoints.find((entry) => Math.hypot(x - entry.x, y - entry.y) <= entry.radius + 16);
+  if (!checkpoint) return null;
+  return getMissionPhotoRequirements().find((photo) => photo.checkpointId === checkpoint.id) ?? null;
+}
+
+function getLandSampleTargetAtPosition(x, y) {
+  if (!isOnLaunchPadPosition(x, y)) return null;
+  return getMissionLandSampleRequirements()[0] ?? null;
+}
+
 function validateRankRequirements(meta) {
   if (state.levelKey === "second_officer" && !meta.usedIf) {
     throw new Error("Second Officer missions require at least one if statement.");
@@ -1933,6 +2055,20 @@ function validateCommandAgainstState(command, previewDrone) {
     const sampleTarget = getSampleTargetAtPosition(previewDrone.x, previewDrone.y);
     if (!sampleTarget) throw new Error(`Line ${command.line}: takeSample() only works when landed on a required colour patch.`);
     previewDrone.sampledTargets.add(sampleTarget.label);
+    return;
+  }
+  if (command.name === "takeLandSample") {
+    if (previewDrone.airborne) throw new Error(`Line ${command.line}: land on the launch pad before taking a land sample.`);
+    const landSampleTarget = getLandSampleTargetAtPosition(previewDrone.x, previewDrone.y);
+    if (!landSampleTarget) throw new Error(`Line ${command.line}: takeLandSample() only works after landing back on the launch pad.`);
+    previewDrone.landSamples.add(landSampleTarget.label);
+    return;
+  }
+  if (command.name === "takePhoto") {
+    if (!previewDrone.airborne) throw new Error(`Line ${command.line}: takePhoto() only works while the drone is airborne at a checkpoint.`);
+    const photoTarget = getPhotoTargetAtPosition(previewDrone.x, previewDrone.y);
+    if (!photoTarget) throw new Error(`Line ${command.line}: takePhoto() only works when the drone is above a required checkpoint.`);
+    previewDrone.photos.add(photoTarget.label);
     return;
   }
   if (!previewDrone.airborne) throw new Error(`Line ${command.line}: the drone must take off before it can move.`);
@@ -1972,6 +2108,22 @@ function buildAnimationQueue(commands) {
       if (!sampleTarget) throw new Error(`Line ${command.line}: takeSample() only works when landed on a required colour patch.`);
       previewDrone.sampledTargets.add(sampleTarget.label);
       queue.push({ type: "sample", sampleLabel: sampleTarget.label, color: sampleTarget.color, duration: 700, label: `Taking ${sampleTarget.color} sample` });
+      continue;
+    }
+    if (command.name === "takeLandSample") {
+      if (previewDrone.airborne) throw new Error(`Line ${command.line}: land on the launch pad before taking a land sample.`);
+      const landSampleTarget = getLandSampleTargetAtPosition(previewDrone.x, previewDrone.y);
+      if (!landSampleTarget) throw new Error(`Line ${command.line}: takeLandSample() only works after landing back on the launch pad.`);
+      previewDrone.landSamples.add(landSampleTarget.label);
+      queue.push({ type: "landSample", sampleLabel: landSampleTarget.label, duration: 700, label: "Taking land sample" });
+      continue;
+    }
+    if (command.name === "takePhoto") {
+      if (!previewDrone.airborne) throw new Error(`Line ${command.line}: takePhoto() only works while the drone is airborne at a checkpoint.`);
+      const photoTarget = getPhotoTargetAtPosition(previewDrone.x, previewDrone.y);
+      if (!photoTarget) throw new Error(`Line ${command.line}: takePhoto() only works when the drone is above a required checkpoint.`);
+      previewDrone.photos.add(photoTarget.label);
+      queue.push({ type: "photo", photoLabel: photoTarget.label, duration: 650, label: `Taking photo: ${photoTarget.label}` });
       continue;
     }
     if (!previewDrone.airborne) throw new Error(`Line ${command.line}: the drone must take off before it can move.`);
@@ -2024,6 +2176,8 @@ function startProgram() {
     state.playing = true;
     state.visitedCheckpoints = new Set();
     state.collectedSamples = new Set();
+    state.collectedLandSamples = new Set();
+    state.capturedPhotos = new Set();
     state.trail = [{ x: state.drone.x, y: state.drone.y }];
     state.currentMissionSuccess = false;
     state.lastSpokenProgressAt = 0;
@@ -2057,6 +2211,9 @@ function stepAnimation(timestamp) {
 
   if (state.drone?.sampleFlashMs > 0) {
     state.drone.sampleFlashMs = Math.max(0, state.drone.sampleFlashMs - delta);
+  }
+  if (state.drone?.photoFlashMs > 0) {
+    state.drone.photoFlashMs = Math.max(0, state.drone.photoFlashMs - delta);
   }
 
   if (state.playing) {
@@ -2171,6 +2328,18 @@ function finalizeStep(step) {
     addFlightLog(`${step.sampleLabel} collected successfully at ${formatCoordinates(state.drone.x, state.drone.y)}.`, true, true);
     playSoundCue("sample");
   }
+  if (step.type === "landSample") {
+    state.collectedLandSamples.add(step.sampleLabel);
+    state.drone.sampleFlashMs = 2000;
+    addFlightLog(`${step.sampleLabel} collected successfully at ${formatCoordinates(state.drone.x, state.drone.y)}.`, true, true);
+    playSoundCue("sample");
+  }
+  if (step.type === "photo") {
+    state.capturedPhotos.add(step.photoLabel);
+    state.drone.photoFlashMs = 1200;
+    addFlightLog(`${step.photoLabel} captured at ${formatCoordinates(state.drone.x, state.drone.y)}.`, true, true);
+    playSoundCue("checkpoint");
+  }
   detectCheckpointHits();
   updateHud();
   renderMissionPanel();
@@ -2208,6 +2377,8 @@ function crashDrone() {
   state.currentMissionSuccess = false;
   state.visitedCheckpoints = new Set();
   state.collectedSamples = new Set();
+  state.collectedLandSamples = new Set();
+  state.capturedPhotos = new Set();
   state.trail = [];
   state.drone = getInitialDrone();
   state.lastTime = 0;
@@ -2223,12 +2394,18 @@ function crashDrone() {
 function evaluateMissionSuccess() {
   const allVisited = getMission().checkpoints.every((checkpoint) => state.visitedCheckpoints.has(checkpoint.id));
   const allSamplesCollected = (getMission().sampleRequirements ?? []).every((sample) => state.collectedSamples.has(sample.label));
-  return allVisited && allSamplesCollected && isOnLaunchPad() && !state.drone.airborne && state.drone.altitude === 0;
+  const allPhotosCaptured = getMissionPhotoRequirements().every((photo) => state.capturedPhotos.has(photo.label));
+  const allLandSamplesCollected = getMissionLandSampleRequirements().every((sample) => state.collectedLandSamples.has(sample.label));
+  return allVisited && allSamplesCollected && allPhotosCaptured && allLandSamplesCollected && isOnLaunchPad() && !state.drone.airborne && state.drone.altitude === 0;
 }
 
 function isOnLaunchPad() {
+  return isOnLaunchPadPosition(state.drone.x, state.drone.y);
+}
+
+function isOnLaunchPadPosition(x, y) {
   const pad = getMission().launchPad;
-  return state.drone.x >= pad.x && state.drone.x <= pad.x + pad.width && state.drone.y >= pad.y && state.drone.y <= pad.y + pad.height;
+  return x >= pad.x && x <= pad.x + pad.width && y >= pad.y && y <= pad.y + pad.height;
 }
 
 function drawScene(timestamp) {
@@ -2511,6 +2688,10 @@ function getShortestTurn(start, end) {
 runButton.addEventListener("click", startProgram);
 resetButton.addEventListener("click", resetDrone);
 exampleButton.addEventListener("click", () => {
+  if (state.missionIndex !== 0) {
+    updateFeedback("Example code is only available for Mission 1 of each flight level. Use the mission objectives to plan this one yourself.", "Plan It", "chip-calm");
+    return;
+  }
   loadMissionEditor();
   updateFeedback("Mission example loaded into the editor.", "Example", "chip-calm");
 });

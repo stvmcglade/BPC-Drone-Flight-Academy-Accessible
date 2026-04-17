@@ -47,19 +47,22 @@
   </div>
 
   <div class="app-shell" id="appShell">
-    <aside class="sidebar">
-      <section class="panel hero-panel">
-        <div class="school-brand">
-          <img class="school-logo" src="BPC-logo-WordMarkWHITEcond.png" alt="Buckley Park College logo">
-        </div>
+    <header class="site-header">
+      <div class="school-brand">
+        <img class="school-logo" src="BPC-logo-WordMarkWHITEcond.png" alt="Buckley Park College logo">
+      </div>
+      <div class="site-header-copy">
         <p class="eyebrow">Buckley Park College Flight School</p>
-        <p class="lede">Students write JavaScript-style commands, then watch a drone fly the mission on screen.</p>
-        <div class="status-pill">
-          <span class="status-dot"></span>
-          Live simulator ready
-        </div>
-      </section>
+        <h1>Drone Code Lab</h1>
+        <p class="lede">Students complete flight levels by planning routes, collecting mission evidence, avoiding hazards, and proving each drone command achieves the objective.</p>
+      </div>
+      <div class="status-pill">
+        <span class="status-dot"></span>
+        Live simulator ready
+      </div>
+    </header>
 
+    <aside class="sidebar">
       <section class="panel account-panel">
         <div class="panel-heading">
           <h2>Account</h2>
@@ -164,7 +167,6 @@
         </div>
 
         <div class="simulator-stage">
-          <canvas id="simCanvas" width="960" height="560" aria-label="Drone programming simulator"></canvas>
           <div class="hud-card">
             <div>
               <span class="hud-label">Position</span>
@@ -183,8 +185,90 @@
               <strong id="hudThemeReadout">Cadet</strong>
             </div>
           </div>
+          <canvas id="simCanvas" width="960" height="560" aria-label="Drone programming simulator"></canvas>
         </div>
+
+        <section class="panel feedback-panel">
+          <div class="panel-heading">
+            <h2>Program Feedback</h2>
+            <span id="feedbackBadge" class="chip chip-calm">Ready</span>
+          </div>
+          <p id="feedbackText" class="feedback-text" aria-live="polite" aria-atomic="true">Press Run Program to animate the drone.</p>
+        </section>
       </section>
+
+      <section class="panel audio-controls-panel" aria-labelledby="audioControlsTitle">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Audio Support</p>
+            <h2 id="audioControlsTitle">Voice Guidance Controls</h2>
+          </div>
+          <span class="chip">Accessible</span>
+        </div>
+        <div class="accessible-audio-controls" aria-label="Audio guidance controls">
+          <button id="voiceToggleButton" type="button" class="secondary-button">Voice On</button>
+          <button id="soundToggleButton" type="button" class="secondary-button">Sound Effects On</button>
+          <button id="speakMissionDescriptionButton" type="button" class="ghost-button">Speak Mission</button>
+          <button id="speakCommandGuideButton" type="button" class="ghost-button">Speak Commands</button>
+          <button id="speakPositionButton" type="button" class="ghost-button">Speak Position</button>
+          <button id="speakMissionMapButton" type="button" class="ghost-button">Mission Audio Map</button>
+        </div>
+        <p id="audioStatusText" class="panel-copy">Audio guidance is ready. Press Run Program to begin spoken updates.</p>
+      </section>
+
+      <div class="workspace-grid">
+        <section class="panel editor-panel">
+          <div class="editor-header">
+            <div>
+              <p class="eyebrow">Student Editor</p>
+              <h2>Write Drone Commands</h2>
+            </div>
+            <div class="button-row">
+              <button id="runButton" type="button">Run Program</button>
+              <button id="resetButton" type="button" class="secondary-button">Reset Drone</button>
+              <button id="exampleButton" type="button" class="ghost-button">Load Example</button>
+            </div>
+          </div>
+
+          <label class="editor-label" for="codeEditor">JavaScript commands</label>
+          <textarea id="codeEditor" spellcheck="false">takeOff();
+moveRight(180);
+moveUp(120);
+rotateRight(90);
+moveRight(140);
+moveDown(140);
+land();</textarea>
+
+          <div class="sr-only" aria-hidden="true">
+            <span id="commandCount">0 commands</span>
+            <ol id="commandPreview"></ol>
+          </div>
+        </section>
+
+        <section class="panel commands-panel" id="commandsPanel">
+          <div class="panel-heading">
+            <h2>Command Guide</h2>
+            <span class="chip">Beginner</span>
+          </div>
+          <ul class="command-list">
+            <li><code>takeOff();</code> Lift the drone into the air.</li>
+            <li><code>land();</code> Bring the drone back to the pad.</li>
+            <li><code>moveUp(80);</code> Move north by pixels.</li>
+            <li><code>moveDown(80);</code> Move south by pixels.</li>
+            <li><code>moveLeft(80);</code> Move west by pixels.</li>
+            <li><code>moveRight(80);</code> Move east by pixels.</li>
+            <li><code>rotateLeft(90);</code> Turn anticlockwise.</li>
+            <li><code>rotateRight(90);</code> Turn clockwise.</li>
+            <li><code>wait(1);</code> Hover for seconds.</li>
+            <li><code>takeSample();</code> Land on a coloured sensor patch and collect a sample.</li>
+            <li><code>takeLandSample();</code> Land on the launch pad at the end of a mission and collect a ground sample.</li>
+            <li><code>takePhoto();</code> Take an aerial photo when the drone is above a mission checkpoint.</li>
+            <li><code>if (droneIsAirborne) { ... }</code> Run commands only when the condition is true.</li>
+            <li><code>if (sensingColor("grey")) { ... }</code> Run commands when the drone is above a coloured patch.</li>
+            <li><code>for (let i = 0; i &lt; 3; i++) { ... }</code> Repeat a block of commands.</li>
+          </ul>
+        </section>
+      </div>
 
       <section class="panel accessible-panel" aria-labelledby="accessiblePanelTitle">
         <div class="panel-heading">
@@ -196,15 +280,6 @@
         </div>
         <p class="panel-copy">This panel mirrors the simulator with text descriptions, live updates, and a step-by-step flight log.</p>
         <div id="simulatorAnnouncements" class="sr-only" aria-live="assertive" aria-atomic="true"></div>
-        <div class="accessible-audio-controls" aria-label="Audio guidance controls">
-          <button id="voiceToggleButton" type="button" class="secondary-button">Voice On</button>
-          <button id="soundToggleButton" type="button" class="secondary-button">Sound Effects On</button>
-          <button id="speakMissionDescriptionButton" type="button" class="ghost-button">Speak Mission</button>
-          <button id="speakCommandGuideButton" type="button" class="ghost-button">Speak Commands</button>
-          <button id="speakPositionButton" type="button" class="ghost-button">Speak Position</button>
-          <button id="speakMissionMapButton" type="button" class="ghost-button">Mission Audio Map</button>
-        </div>
-        <p id="audioStatusText" class="panel-copy">Audio guidance is ready. Press Run Program to begin spoken updates.</p>
         <div class="accessible-grid">
           <article class="feedback-card">
             <div class="panel-heading">
@@ -228,69 +303,6 @@
           </div>
           <ol id="accessibleFlightLog" class="command-preview accessible-log" aria-live="polite" aria-relevant="additions text"></ol>
         </article>
-      </section>
-
-      <section class="panel editor-panel">
-        <div class="editor-header">
-          <div>
-            <p class="eyebrow">Student Editor</p>
-            <h2>Write Drone Commands</h2>
-          </div>
-          <div class="button-row">
-            <button id="runButton" type="button">Run Program</button>
-            <button id="resetButton" type="button" class="secondary-button">Reset Drone</button>
-            <button id="exampleButton" type="button" class="ghost-button">Load Example</button>
-          </div>
-        </div>
-
-        <label class="editor-label" for="codeEditor">JavaScript commands</label>
-        <textarea id="codeEditor" spellcheck="false">takeOff();
-moveRight(180);
-moveUp(120);
-rotateRight(90);
-moveRight(140);
-moveDown(140);
-land();</textarea>
-
-        <div class="feedback-grid">
-          <article class="feedback-card">
-            <div class="panel-heading">
-              <h3>Program Feedback</h3>
-              <span id="feedbackBadge" class="chip chip-calm">Ready</span>
-            </div>
-            <p id="feedbackText" class="feedback-text" aria-live="polite" aria-atomic="true">Press Run Program to animate the drone.</p>
-          </article>
-
-          <article class="feedback-card">
-            <div class="panel-heading">
-              <h3>Parsed Commands</h3>
-              <span id="commandCount" class="chip">0 commands</span>
-            </div>
-            <ol id="commandPreview" class="command-preview"></ol>
-          </article>
-        </div>
-      </section>
-
-      <section class="panel commands-panel" id="commandsPanel">
-        <div class="panel-heading">
-          <h2>Command Guide</h2>
-          <span class="chip">Beginner</span>
-        </div>
-        <ul class="command-list">
-          <li><code>takeOff();</code> Lift the drone into the air.</li>
-          <li><code>land();</code> Bring the drone back to the pad.</li>
-          <li><code>moveUp(80);</code> Move north by pixels.</li>
-          <li><code>moveDown(80);</code> Move south by pixels.</li>
-          <li><code>moveLeft(80);</code> Move west by pixels.</li>
-          <li><code>moveRight(80);</code> Move east by pixels.</li>
-          <li><code>rotateLeft(90);</code> Turn anticlockwise.</li>
-          <li><code>rotateRight(90);</code> Turn clockwise.</li>
-          <li><code>wait(1);</code> Hover for seconds.</li>
-          <li><code>takeSample();</code> Land on a coloured sensor patch and collect a sample.</li>
-          <li><code>if (droneIsAirborne) { ... }</code> Run commands only when the condition is true.</li>
-          <li><code>if (sensingColor("grey")) { ... }</code> Run commands when the drone is above a coloured patch.</li>
-          <li><code>for (let i = 0; i &lt; 3; i++) { ... }</code> Repeat a block of commands.</li>
-        </ul>
       </section>
     </main>
   </div>
