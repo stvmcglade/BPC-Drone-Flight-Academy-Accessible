@@ -161,7 +161,7 @@ land();`,
         checkpoints: [
           { id: "n3-a", name: "Signal West", x: 230, y: 390, radius: 22 },
           { id: "n3-b", name: "Signal North", x: 360, y: 210, radius: 22 },
-          { id: "n3-c", name: "Signal East", x: 610, y: 210, radius: 22 },
+          { id: "n3-c", name: "Signal East", x: 680, y: 210, radius: 22 },
           { id: "n3-d", name: "Signal South", x: 770, y: 380, radius: 22 },
         ],
         noFlyZones: [
